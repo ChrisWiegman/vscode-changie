@@ -1,0 +1,168 @@
+{
+	"name": "cw-changie",
+	"displayName": "VS Code Changie",
+	"description": "Manage changelog entries with changie directly from VS Code.",
+	"version": "0.1.0",
+	"publisher": "chriswiegman",
+	"license": "MIT",
+	"repository": {
+		"type": "git",
+		"url": "git+https://github.com/ChrisWiegman/vscode-changie.git"
+	},
+	"homepage": "https://github.com/ChrisWiegman/vscode-changie#readme",
+	"bugs": {
+		"url": "https://github.com/ChrisWiegman/vscode-changie/issues"
+	},
+	"engines": {
+		"vscode": "^1.118.0"
+	},
+	"categories": [
+		"Other"
+	],
+	"keywords": [
+		"changelog",
+		"changie",
+		"release",
+		"versioning"
+	],
+	"activationEvents": [
+		"onStartupFinished"
+	],
+	"main": "./out/src/extension.js",
+	"icon": "assets/icon.png",
+	"contributes": {
+		"commands": [
+			{
+				"command": "changie.newEntry",
+				"title": "Changie: Add New Changelog Entry",
+				"icon": "$(add)"
+			},
+			{
+				"command": "changie.batchRelease",
+				"title": "Changie: Batch for Release",
+				"icon": "$(package)"
+			},
+			{
+				"command": "changie.mergeChangelog",
+				"title": "Changie: Merge Changelog",
+				"icon": "$(merge)"
+			},
+			{
+				"command": "changie.openChangelog",
+				"title": "Changie: Open CHANGELOG.md",
+				"icon": "$(book)"
+			},
+			{
+				"command": "changie.refresh",
+				"title": "Changie: Refresh",
+				"icon": "$(refresh)"
+			},
+			{
+				"command": "changie.deleteEntry",
+				"title": "Changie: Delete Entry",
+				"icon": "$(trash)"
+			}
+		],
+		"viewsContainers": {
+			"activitybar": [
+				{
+					"id": "changie",
+					"title": "Changie",
+					"icon": "assets/sidebar-icon.svg"
+				}
+			]
+		},
+		"views": {
+			"changie": [
+				{
+					"id": "changie.entries",
+					"name": "Unreleased Changes",
+					"when": "changie.isConfigured"
+				},
+				{
+					"id": "changie.releases",
+					"name": "Releases",
+					"when": "changie.isConfigured"
+				}
+			]
+		},
+		"menus": {
+			"view/title": [
+				{
+					"command": "changie.newEntry",
+					"when": "view == changie.entries",
+					"group": "navigation@1"
+				},
+				{
+					"command": "changie.batchRelease",
+					"when": "view == changie.entries",
+					"group": "navigation@2"
+				},
+				{
+					"command": "changie.mergeChangelog",
+					"when": "view == changie.entries",
+					"group": "navigation@3"
+				},
+				{
+					"command": "changie.refresh",
+					"when": "view == changie.entries",
+					"group": "navigation@4"
+				},
+				{
+					"command": "changie.refresh",
+					"when": "view == changie.releases",
+					"group": "navigation"
+				}
+			],
+			"view/item/context": [
+				{
+					"command": "changie.deleteEntry",
+					"when": "view == changie.entries && viewItem == entry",
+					"group": "inline"
+				}
+			]
+		},
+		"configuration": {
+			"title": "Changie",
+			"properties": {
+				"changie.executablePath": {
+					"type": "string",
+					"default": "",
+					"description": "Path to the changie executable. When empty, uses node_modules/.bin/changie if present, then falls back to 'changie' on PATH."
+				}
+			}
+		}
+	},
+	"scripts": {
+		"vscode:prepublish": "npm run compile",
+		"compile": "tsc -p ./",
+		"watch": "tsc -watch -p ./",
+		"test": "npm run compile && mocha",
+		"test:extension": "npm run compile && node ./out/test/runTests.js",
+		"lint": "biome lint src test"
+	},
+	"mocha": {
+		"spec": "out/test/changie.test.js",
+		"timeout": 5000
+	},
+	"overrides": {
+		"diff": "^9.0.0",
+		"glob": "^13.0.6",
+		"serialize-javascript": "^7.0.5",
+		"uuid": "^14.0.0"
+	},
+	"devDependencies": {
+		"@biomejs/biome": "^2.4.14",
+		"@types/mocha": "^10.0.10",
+		"@types/node": "^25.6.2",
+		"@types/sinon": "^21.0.1",
+		"@types/vscode": "^1.118.0",
+		"@vscode/test-electron": "^2.5.2",
+		"@vscode/vsce": "^3.9.1",
+		"changie": "^1.24.0",
+		"mocha": "^11.7.5",
+		"sinon": "^22.0.0",
+		"ts-node": "^10.9.2",
+		"typescript": "^6.0.3"
+	}
+}

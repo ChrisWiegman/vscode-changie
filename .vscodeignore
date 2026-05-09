@@ -1,0 +1,26 @@
+# Dev tooling and config
+.vscode/**
+.vscode-test/**
+.github/**
+.changes/**
+.changie.yaml
+biome.json
+Makefile
+tsconfig.json
+package-lock.json
+
+# Source (compiled output is in out/src/)
+src/**
+test/**
+
+# Test output
+out/test/**
+
+# Dev assets
+assets/icon.svg
+
+# Misc
+.gitignore
+**/*.map
+**/.DS_Store
+.claude/**

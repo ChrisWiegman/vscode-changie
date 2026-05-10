@@ -19,8 +19,8 @@ All commands are available from the Command Palette (`Ctrl+Shift+P` / `Cmd+Shift
 | Command | Description |
 |---|---|
 | **Changie: Add New Changelog Entry** | Prompts for kind and description, then writes a new entry file via the `changie new` CLI |
-| **Changie: Batch for Release** | Collects unreleased entries into a versioned release file. Choose `auto`, `major`, `minor`, `patch`, or a custom version string |
-| **Changie: Merge Changelog** | Runs `changie merge` to combine all versioned files into `CHANGELOG.md` |
+| **Changie: Batch for Release** | Collects unreleased entries into a versioned release file and immediately merges all versions into `CHANGELOG.md`. Choose `auto`, `major`, `minor`, `patch`, or a custom version string. Equivalent to running `changie batch <version> && changie merge`. |
+| **Changie: Merge Changelog** | Runs `changie merge` to combine all versioned files into `CHANGELOG.md` without batching |
 | **Changie: Open CHANGELOG.md** | Opens the merged changelog in the editor |
 | **Changie: Refresh** | Manually re-reads the changes directory |
 

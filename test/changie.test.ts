@@ -6,10 +6,12 @@ import { afterEach, beforeEach, describe, it } from "mocha";
 import {
 	findChangieBin,
 	findConfigPath,
+	normalizeVersion,
 	parseKindsFromConfig,
 	parseSimpleYaml,
 	readConfig,
 	readUnreleasedEntries,
+	updatePackageVersionFiles,
 } from "../src/changie";
 
 describe("parseSimpleYaml", () => {
@@ -218,6 +220,127 @@ describe("readUnreleasedEntries", () => {
 		const entries = readUnreleasedEntries(tmpDir, "test", config);
 		assert.strictEqual(entries[0].workspaceRoot, tmpDir);
 		assert.ok(entries[0].filePath.endsWith("entry.yaml"));
+	});
+});
+
+describe("normalizeVersion", () => {
+	it("strips a leading v", () => {
+		assert.strictEqual(normalizeVersion("v1.2.3"), "1.2.3");
+	});
+
+	it("leaves a version without a leading v unchanged", () => {
+		assert.strictEqual(normalizeVersion("1.2.3"), "1.2.3");
+	});
+
+	it("handles an empty string", () => {
+		assert.strictEqual(normalizeVersion(""), "");
+	});
+
+	it("strips only the first v character", () => {
+		assert.strictEqual(normalizeVersion("vv1.0.0"), "v1.0.0");
+	});
+});
+
+describe("updatePackageVersionFiles", () => {
+	let tmpDir: string;
+
+	beforeEach(() => {
+		tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), "changie-test-"));
+	});
+
+	afterEach(() => {
+		fs.rmSync(tmpDir, { recursive: true, force: true });
+	});
+
+	it("returns bumped: false when no package.json exists", () => {
+		const result = updatePackageVersionFiles(tmpDir, "1.2.3");
+		assert.deepStrictEqual(result, { bumped: false, noVersionField: false });
+	});
+
+	it("returns noVersionField: true when package.json has no version field", () => {
+		fs.writeFileSync(path.join(tmpDir, "package.json"), '{"name": "test"}\n');
+		const result = updatePackageVersionFiles(tmpDir, "1.2.3");
+		assert.deepStrictEqual(result, { bumped: false, noVersionField: true });
+	});
+
+	it("updates the version in package.json and returns bumped: true", () => {
+		fs.writeFileSync(
+			path.join(tmpDir, "package.json"),
+			'{\n  "name": "test",\n  "version": "1.0.0"\n}\n',
+		);
+		const result = updatePackageVersionFiles(tmpDir, "1.2.3");
+		assert.deepStrictEqual(result, { bumped: true, noVersionField: false });
+		const updated = JSON.parse(fs.readFileSync(path.join(tmpDir, "package.json"), "utf-8")) as Record<string, unknown>;
+		assert.strictEqual(updated.version, "1.2.3");
+	});
+
+	it("strips a leading v before writing to package.json", () => {
+		fs.writeFileSync(
+			path.join(tmpDir, "package.json"),
+			'{\n  "name": "test",\n  "version": "1.0.0"\n}\n',
+		);
+		updatePackageVersionFiles(tmpDir, "v2.0.0");
+		const updated = JSON.parse(fs.readFileSync(path.join(tmpDir, "package.json"), "utf-8")) as Record<string, unknown>;
+		assert.strictEqual(updated.version, "2.0.0");
+	});
+
+	it("preserves surrounding content in package.json", () => {
+		const original =
+			'{\n  "name": "test",\n  "version": "1.0.0",\n  "description": "A test"\n}\n';
+		fs.writeFileSync(path.join(tmpDir, "package.json"), original);
+		updatePackageVersionFiles(tmpDir, "1.2.3");
+		const content = fs.readFileSync(path.join(tmpDir, "package.json"), "utf-8");
+		assert.ok(content.includes('"name": "test"'));
+		assert.ok(content.includes('"description": "A test"'));
+		assert.ok(content.includes('"version": "1.2.3"'));
+	});
+
+	it("skips package-lock.json when it does not exist", () => {
+		fs.writeFileSync(path.join(tmpDir, "package.json"), '{\n  "version": "1.0.0"\n}\n');
+		updatePackageVersionFiles(tmpDir, "1.2.3");
+		assert.ok(!fs.existsSync(path.join(tmpDir, "package-lock.json")));
+	});
+
+	it("updates root version and packages[''] version in package-lock.json", () => {
+		fs.writeFileSync(path.join(tmpDir, "package.json"), '{\n  "version": "1.0.0"\n}\n');
+		const lock = {
+			name: "test",
+			version: "1.0.0",
+			lockfileVersion: 3,
+			packages: { "": { name: "test", version: "1.0.0" } },
+		};
+		fs.writeFileSync(
+			path.join(tmpDir, "package-lock.json"),
+			JSON.stringify(lock, null, 2) + "\n",
+		);
+		updatePackageVersionFiles(tmpDir, "1.2.3");
+		const updated = JSON.parse(
+			fs.readFileSync(path.join(tmpDir, "package-lock.json"), "utf-8"),
+		) as typeof lock;
+		assert.strictEqual(updated.version, "1.2.3");
+		assert.strictEqual(updated.packages[""].version, "1.2.3");
+	});
+
+	it("updates root version in package-lock.json when no packages[''] entry", () => {
+		fs.writeFileSync(path.join(tmpDir, "package.json"), '{\n  "version": "1.0.0"\n}\n');
+		const lock = { name: "test", version: "1.0.0", lockfileVersion: 1 };
+		fs.writeFileSync(
+			path.join(tmpDir, "package-lock.json"),
+			JSON.stringify(lock, null, 2) + "\n",
+		);
+		updatePackageVersionFiles(tmpDir, "1.2.3");
+		const updated = JSON.parse(
+			fs.readFileSync(path.join(tmpDir, "package-lock.json"), "utf-8"),
+		) as typeof lock;
+		assert.strictEqual(updated.version, "1.2.3");
+	});
+
+	it("handles malformed package-lock.json without throwing", () => {
+		fs.writeFileSync(path.join(tmpDir, "package.json"), '{\n  "version": "1.0.0"\n}\n');
+		fs.writeFileSync(path.join(tmpDir, "package-lock.json"), "not valid json");
+		assert.doesNotThrow(() => updatePackageVersionFiles(tmpDir, "1.2.3"));
+		const pkg = JSON.parse(fs.readFileSync(path.join(tmpDir, "package.json"), "utf-8")) as Record<string, unknown>;
+		assert.strictEqual(pkg.version, "1.2.3");
 	});
 });
 

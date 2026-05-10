@@ -129,6 +129,11 @@
 					"type": "string",
 					"default": "",
 					"description": "Path to the changie executable. When empty, uses node_modules/.bin/changie if present, then falls back to 'changie' on PATH."
+				},
+				"changie.updateVersionFiles": {
+					"type": "boolean",
+					"default": true,
+					"description": "When enabled, automatically updates the version field in package.json (and package-lock.json if present) to match the new release version when batching a release."
 				}
 			}
 		}

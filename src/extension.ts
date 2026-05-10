@@ -2,7 +2,7 @@ import * as fs from "fs";
 import * as path from "path";
 import * as vscode from "vscode";
 import { ChangelogProvider, EntryItem } from "./changelogProvider";
-import { findChangieBin, readConfig, readReleases, readUnreleasedEntries, runChangie } from "./changie";
+import { findChangieBin, readConfig, readReleases, readUnreleasedEntries, runChangie, updatePackageVersionFiles } from "./changie";
 import { ReleasesProvider } from "./releasesProvider";
 import type { ChangieConfig, WorkspaceInfo } from "./types";
 
@@ -18,6 +18,15 @@ const VERSION_OPTIONS = [
 	{ label: "patch", description: "Increment patch version (bug fixes)" },
 	{ label: "$(edit) Custom...", description: "Enter a specific version number" },
 ];
+
+function bumpVersionFiles(workspaceRoot: string, version: string): void {
+	const result = updatePackageVersionFiles(workspaceRoot, version);
+	if (result.noVersionField) {
+		void vscode.window.showWarningMessage(
+			"Changie: package.json has no version field — skipped automatic version update.",
+		);
+	}
+}
 
 function getConfiguredPath(): string | undefined {
 	const config = vscode.workspace.getConfiguration("changie");
@@ -175,8 +184,35 @@ export async function activate(context: vscode.ExtensionContext): Promise<Extens
 			}
 
 			try {
+				const changesDir = path.join(ws.root, ws.config.changesDir);
+				const beforeFiles = fs.existsSync(changesDir)
+					? new Set(fs.readdirSync(changesDir).filter((f) => /^\d/.test(f) && f.endsWith(".md")))
+					: new Set<string>();
+
 				await runChangie(ws.root, ["batch", version], getConfiguredPath());
+
+				let resolvedVersion = version;
+				if (fs.existsSync(changesDir)) {
+					const newFile = fs
+						.readdirSync(changesDir)
+						.filter((f) => /^\d/.test(f) && f.endsWith(".md"))
+						.find((f) => !beforeFiles.has(f));
+					if (newFile) {
+						const content = fs.readFileSync(path.join(changesDir, newFile), "utf-8");
+						const match = content.split("\n")[0]?.match(/^##\s+(.+?)\s+-\s+\d{4}-\d{2}-\d{2}/);
+						if (match) resolvedVersion = match[1].trim();
+					}
+				}
+
 				await runChangie(ws.root, ["merge"], getConfiguredPath());
+
+				const shouldUpdate = vscode.workspace
+					.getConfiguration("changie")
+					.get<boolean>("updateVersionFiles", true);
+				if (shouldUpdate) {
+					bumpVersionFiles(ws.root, resolvedVersion);
+				}
+
 				refresh();
 
 				const changelogUri = vscode.Uri.file(path.join(ws.root, ws.config.changelogPath));
@@ -184,7 +220,9 @@ export async function activate(context: vscode.ExtensionContext): Promise<Extens
 					await vscode.window.showTextDocument(changelogUri);
 				}
 
-				void vscode.window.showInformationMessage(`Batched and merged ${version} into ${ws.config.changelogPath}.`);
+				void vscode.window.showInformationMessage(
+					`Batched and merged ${resolvedVersion} into ${ws.config.changelogPath}.`,
+				);
 			} catch (err) {
 				void vscode.window.showErrorMessage(`changie batch/merge failed: ${String(err)}`);
 			}

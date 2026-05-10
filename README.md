@@ -19,7 +19,7 @@ All commands are available from the Command Palette (`Ctrl+Shift+P` / `Cmd+Shift
 | Command | Description |
 |---|---|
 | **Changie: Add New Changelog Entry** | Prompts for kind and description, then writes a new entry file via the `changie new` CLI |
-| **Changie: Batch for Release** | Collects unreleased entries into a versioned release file and immediately merges all versions into `CHANGELOG.md`. Choose `auto`, `major`, `minor`, `patch`, or a custom version string. Equivalent to running `changie batch <version> && changie merge`. |
+| **Changie: Batch for Release** | Collects unreleased entries into a versioned release file and immediately merges all versions into `CHANGELOG.md`. Choose `auto`, `major`, `minor`, `patch`, or a custom version string. Equivalent to running `changie batch <version> && changie merge`. When `changie.updateVersionFiles` is enabled, also updates the `version` field in `package.json` and `package-lock.json` to match the new release. |
 | **Changie: Merge Changelog** | Runs `changie merge` to combine all versioned files into `CHANGELOG.md` without batching |
 | **Changie: Open CHANGELOG.md** | Opens the merged changelog in the editor |
 | **Changie: Refresh** | Manually re-reads the changes directory |
@@ -57,6 +57,7 @@ npm install --save-dev changie
 | Setting | Default | Description |
 |---|---|---|
 | `changie.executablePath` | *(empty)* | Explicit path to the changie binary. Leave empty to use auto-detection. |
+| `changie.updateVersionFiles` | `true` | When enabled, **Batch for Release** automatically updates the `version` field in `package.json` (and `package-lock.json` if present) to match the new release version. A warning is shown if `package.json` exists but has no `version` field. Disable this if your project manages version bumps separately. |
 
 ## Getting started
 

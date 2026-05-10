@@ -189,3 +189,69 @@ export async function runChangie(
 	if (stderr) throw new Error(stderr);
 	return stdout;
 }
+
+export function normalizeVersion(v: string): string {
+	return v.replace(/^v/, "");
+}
+
+export interface VersionBumpResult {
+	bumped: boolean;
+	noVersionField: boolean;
+}
+
+export function updatePackageVersionFiles(
+	workspaceRoot: string,
+	version: string,
+): VersionBumpResult {
+	const semver = normalizeVersion(version);
+
+	const pkgPath = path.join(workspaceRoot, "package.json");
+	if (!fs.existsSync(pkgPath)) return { bumped: false, noVersionField: false };
+
+	let pkgContent: string;
+	let pkg: Record<string, unknown>;
+	try {
+		pkgContent = fs.readFileSync(pkgPath, "utf-8");
+		pkg = JSON.parse(pkgContent) as Record<string, unknown>;
+	} catch {
+		return { bumped: false, noVersionField: false };
+	}
+
+	if (typeof pkg.version !== "string") {
+		return { bumped: false, noVersionField: true };
+	}
+
+	const updatedPkg = pkgContent.replace(/"version":\s*"[^"]*"/, `"version": "${semver}"`);
+	if (updatedPkg !== pkgContent) {
+		fs.writeFileSync(pkgPath, updatedPkg);
+	}
+
+	const lockPath = path.join(workspaceRoot, "package-lock.json");
+	if (fs.existsSync(lockPath)) {
+		try {
+			const lockContent = fs.readFileSync(lockPath, "utf-8");
+			const lock = JSON.parse(lockContent) as Record<string, unknown>;
+			let changed = false;
+
+			if (typeof lock.version === "string") {
+				lock.version = semver;
+				changed = true;
+			}
+			const packages = lock.packages as Record<string, Record<string, unknown>> | undefined;
+			if (packages?.[""] && typeof packages[""].version === "string") {
+				packages[""].version = semver;
+				changed = true;
+			}
+
+			if (changed) {
+				const indentMatch = lockContent.match(/^{\n(\s+)/);
+				const indent = indentMatch ? indentMatch[1] : "  ";
+				fs.writeFileSync(lockPath, JSON.stringify(lock, null, indent) + "\n");
+			}
+		} catch {
+			// skip malformed lock file
+		}
+	}
+
+	return { bumped: true, noVersionField: false };
+}

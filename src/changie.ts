@@ -41,6 +41,12 @@ export function parseKindsFromConfig(content: string): Array<{ label: string }> 
 	return kinds;
 }
 
+function isWithinDirectory(parent: string, childRelative: string): boolean {
+	const resolvedParent = path.resolve(parent);
+	const resolvedChild = path.resolve(parent, childRelative);
+	return resolvedChild === resolvedParent || resolvedChild.startsWith(resolvedParent + path.sep);
+}
+
 export function findConfigPath(workspaceRoot: string): string | undefined {
 	for (const name of [".changie.yaml", ".changie.yml"]) {
 		const p = path.join(workspaceRoot, name);
@@ -63,10 +69,22 @@ export function readConfig(workspaceRoot: string): ChangieConfig | undefined {
 	const parsed = parseSimpleYaml(content);
 	const kinds = parseKindsFromConfig(content);
 
+	const changesDir = parsed.changesDir ?? ".changes";
+	const unreleasedDir = parsed.unreleasedDir ?? "unreleased";
+	const changelogPath = parsed.changelogPath ?? "CHANGELOG.md";
+
+	if (
+		!isWithinDirectory(workspaceRoot, changesDir) ||
+		!isWithinDirectory(workspaceRoot, path.join(changesDir, unreleasedDir)) ||
+		!isWithinDirectory(workspaceRoot, changelogPath)
+	) {
+		return undefined;
+	}
+
 	return {
-		changesDir: parsed.changesDir ?? ".changes",
-		unreleasedDir: parsed.unreleasedDir ?? "unreleased",
-		changelogPath: parsed.changelogPath ?? "CHANGELOG.md",
+		changesDir,
+		unreleasedDir,
+		changelogPath,
 		kinds: kinds.length > 0 ? kinds : DEFAULT_KINDS,
 	};
 }
@@ -205,6 +223,11 @@ export function updatePackageVersionFiles(
 ): VersionBumpResult {
 	const semver = normalizeVersion(version);
 
+	// Reject versions that would break JSON structure or contain control characters
+	if (!/^\d/.test(semver) || semver.includes('"') || semver.includes('\n') || semver.includes('\r')) {
+		return { bumped: false, noVersionField: false };
+	}
+
 	const pkgPath = path.join(workspaceRoot, "package.json");
 	if (!fs.existsSync(pkgPath)) return { bumped: false, noVersionField: false };
 
@@ -221,7 +244,9 @@ export function updatePackageVersionFiles(
 		return { bumped: false, noVersionField: true };
 	}
 
-	const updatedPkg = pkgContent.replace(/"version":\s*"[^"]*"/, `"version": "${semver}"`);
+	// Use a function replacement to prevent special replacement patterns ($&, $', $`) from
+	// being interpreted when the version string contains those characters.
+	const updatedPkg = pkgContent.replace(/"version":\s*"[^"]*"/, () => `"version": "${semver}"`);
 	if (updatedPkg !== pkgContent) {
 		fs.writeFileSync(pkgPath, updatedPkg);
 	}

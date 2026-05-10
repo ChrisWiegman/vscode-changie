@@ -149,6 +149,27 @@ describe("readConfig", () => {
 		assert.ok(config?.kinds.length ?? 0 > 0);
 		assert.ok(config?.kinds.some((k) => k.label === "Added"));
 	});
+
+	it("returns undefined when changesDir escapes workspace root via path traversal", () => {
+		fs.writeFileSync(path.join(tmpDir, ".changie.yaml"), "changesDir: ../../outside\n");
+		assert.strictEqual(readConfig(tmpDir), undefined);
+	});
+
+	it("returns undefined when unreleasedDir escapes workspace root via path traversal", () => {
+		fs.writeFileSync(
+			path.join(tmpDir, ".changie.yaml"),
+			"changesDir: .changes\nunreleasedDir: ../../outside\n",
+		);
+		assert.strictEqual(readConfig(tmpDir), undefined);
+	});
+
+	it("returns undefined when changelogPath escapes workspace root via path traversal", () => {
+		fs.writeFileSync(
+			path.join(tmpDir, ".changie.yaml"),
+			"changesDir: .changes\nchangelogPath: ../../CHANGELOG.md\n",
+		);
+		assert.strictEqual(readConfig(tmpDir), undefined);
+	});
 });
 
 describe("readUnreleasedEntries", () => {
@@ -333,6 +354,33 @@ describe("updatePackageVersionFiles", () => {
 			fs.readFileSync(path.join(tmpDir, "package-lock.json"), "utf-8"),
 		) as typeof lock;
 		assert.strictEqual(updated.version, "1.2.3");
+	});
+
+	it("returns bumped: false for a version string containing double quotes", () => {
+		fs.writeFileSync(path.join(tmpDir, "package.json"), '{\n  "version": "1.0.0"\n}\n');
+		const result = updatePackageVersionFiles(tmpDir, '1.0.0", "scripts":{"postinstall":"evil"}//');
+		assert.deepStrictEqual(result, { bumped: false, noVersionField: false });
+		const pkg = JSON.parse(fs.readFileSync(path.join(tmpDir, "package.json"), "utf-8")) as Record<string, unknown>;
+		assert.strictEqual(pkg.version, "1.0.0");
+	});
+
+	it("returns bumped: false for a version string not starting with a digit", () => {
+		fs.writeFileSync(path.join(tmpDir, "package.json"), '{\n  "version": "1.0.0"\n}\n');
+		const result = updatePackageVersionFiles(tmpDir, "invalid-version");
+		assert.deepStrictEqual(result, { bumped: false, noVersionField: false });
+	});
+
+	it("does not corrupt package.json when version contains $& replacement pattern", () => {
+		fs.writeFileSync(
+			path.join(tmpDir, "package.json"),
+			'{\n  "name": "test",\n  "version": "1.0.0"\n}\n',
+		);
+		// $& would expand to the matched text if not using a function replacement
+		const result = updatePackageVersionFiles(tmpDir, "2.$&0");
+		// starts with digit, no quotes — should be accepted and written literally
+		assert.deepStrictEqual(result, { bumped: true, noVersionField: false });
+		const pkg = JSON.parse(fs.readFileSync(path.join(tmpDir, "package.json"), "utf-8")) as Record<string, unknown>;
+		assert.strictEqual(pkg.version, "2.$&0");
 	});
 
 	it("handles malformed package-lock.json without throwing", () => {

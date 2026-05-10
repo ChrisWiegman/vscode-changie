@@ -16,6 +16,15 @@
 	"engines": {
 		"vscode": "^1.118.0"
 	},
+	"capabilities": {
+		"untrustedWorkspaces": {
+			"supported": "limited",
+			"description": "In untrusted workspaces, the changie.executablePath setting cannot be overridden — the extension falls back to changie on PATH.",
+			"restrictedConfigurations": [
+				"changie.executablePath"
+			]
+		}
+	},
 	"categories": [
 		"Other"
 	],

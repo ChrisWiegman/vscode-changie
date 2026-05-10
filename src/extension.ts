@@ -280,6 +280,13 @@ export async function activate(context: vscode.ExtensionContext): Promise<Extens
 			);
 			if (confirmed !== "Delete") return;
 
+			const resolvedFile = path.resolve(item.entry.filePath);
+			const resolvedRoot = path.resolve(item.entry.workspaceRoot);
+			if (!resolvedFile.startsWith(resolvedRoot + path.sep)) {
+				void vscode.window.showErrorMessage("Cannot delete entry: path is outside workspace.");
+				return;
+			}
+
 			try {
 				fs.unlinkSync(item.entry.filePath);
 				refresh();

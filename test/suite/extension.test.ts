@@ -70,4 +70,18 @@ suite("Extension", () => {
 			);
 		});
 	});
+
+	suite("changie.batchRelease with no workspace", () => {
+		test("shows error message when no changie config found", async () => {
+			const showError = sandbox.stub(vscode.window, "showErrorMessage").resolves(undefined);
+			const showQuickPick = sandbox.stub(vscode.window, "showQuickPick").resolves(undefined);
+
+			await vscode.commands.executeCommand("changie.batchRelease");
+
+			assert.ok(
+				showError.called || showQuickPick.called,
+				"Should show error or quick pick when no workspace has changie",
+			);
+		});
+	});
 });

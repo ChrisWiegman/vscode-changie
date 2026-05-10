@@ -176,10 +176,17 @@ export async function activate(context: vscode.ExtensionContext): Promise<Extens
 
 			try {
 				await runChangie(ws.root, ["batch", version], getConfiguredPath());
+				await runChangie(ws.root, ["merge"], getConfiguredPath());
 				refresh();
-				void vscode.window.showInformationMessage(`Batched unreleased entries as ${version}.`);
+
+				const changelogUri = vscode.Uri.file(path.join(ws.root, ws.config.changelogPath));
+				if (fs.existsSync(changelogUri.fsPath)) {
+					await vscode.window.showTextDocument(changelogUri);
+				}
+
+				void vscode.window.showInformationMessage(`Batched and merged ${version} into ${ws.config.changelogPath}.`);
 			} catch (err) {
-				void vscode.window.showErrorMessage(`changie batch failed: ${String(err)}`);
+				void vscode.window.showErrorMessage(`changie batch/merge failed: ${String(err)}`);
 			}
 		}),
 	);

@@ -1,3 +1,0 @@
-kind: Security Fixes
-body: Validate version strings and use a function replacement in updatePackageVersionFiles to prevent JSON injection via special replacement patterns or quote characters in custom version input
-time: 2026-05-10T10:40:34.416842-05:00

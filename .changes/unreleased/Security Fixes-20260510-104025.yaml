@@ -1,3 +1,0 @@
-kind: Security Fixes
-body: Reject .changie.yaml configs where changesDir, unreleasedDir, or changelogPath resolve outside the workspace root, preventing path traversal attacks via malicious repository configs
-time: 2026-05-10T10:40:25.967988-05:00

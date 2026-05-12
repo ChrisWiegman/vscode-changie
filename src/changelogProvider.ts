@@ -19,6 +19,7 @@ export class EntryItem extends vscode.TreeItem {
 
 	constructor(entry: ChangeEntry) {
 		super(entry.body, vscode.TreeItemCollapsibleState.None);
+
 		this.entry = entry;
 		this.contextValue = "entry";
 		this.iconPath = new vscode.ThemeIcon("note");
@@ -38,11 +39,15 @@ export type TreeNode = KindItem | EntryItem;
 
 function groupByKind(entries: ChangeEntry[]): Map<string, ChangeEntry[]> {
 	const map = new Map<string, ChangeEntry[]>();
+
 	for (const entry of entries) {
 		const existing = map.get(entry.kind) ?? [];
+
 		existing.push(entry);
+
 		map.set(entry.kind, existing);
 	}
+
 	return map;
 }
 
@@ -50,6 +55,7 @@ export class ChangelogProvider implements vscode.TreeDataProvider<TreeNode> {
 	private readonly _onDidChangeTreeData = new vscode.EventEmitter<
 		TreeNode | undefined | null | void
 	>();
+
 	readonly onDidChangeTreeData = this._onDidChangeTreeData.event;
 
 	private workspaces: WorkspaceInfo[] = [];
@@ -93,6 +99,7 @@ export class ChangelogProvider implements vscode.TreeDataProvider<TreeNode> {
 					? this.kindLabelWithWorkspace(kind, entries)
 					: kind;
 			const kindItem = new KindItem(label, entryItems);
+
 			items.push(kindItem);
 		}
 
@@ -101,9 +108,11 @@ export class ChangelogProvider implements vscode.TreeDataProvider<TreeNode> {
 
 	private kindLabelWithWorkspace(kind: string, entries: ChangeEntry[]): string {
 		const workspaceNames = [...new Set(entries.map((e) => e.workspaceName))];
+
 		if (workspaceNames.length === 1) {
 			return `${kind} (${workspaceNames[0]})`;
 		}
+
 		return kind;
 	}
 

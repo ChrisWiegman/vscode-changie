@@ -17,49 +17,61 @@ const DEFAULT_KINDS = [
 
 export function parseSimpleYaml(content: string): Record<string, string> {
 	const result: Record<string, string> = {};
+
 	for (const line of content.split("\n")) {
 		const match = line.match(/^([\w-]+):\s*(.*)$/);
+
 		if (match) {
 			const value = match[2].trim();
+
 			result[match[1]] = value.replace(/^['"](.*)['"]$/, "$1");
 		}
 	}
+
 	return result;
 }
 
 export function parseKindsFromConfig(content: string): Array<{ label: string }> {
 	const kinds: Array<{ label: string }> = [];
 	const kindsBlock = content.match(/^kinds:\s*\n((?:[ \t]+-[^\n]*\n?)*)/m);
+
 	if (!kindsBlock) return kinds;
 
 	for (const line of kindsBlock[1].split("\n")) {
 		const labelMatch = line.match(/\s*-\s*label:\s*(.+)/);
+
 		if (labelMatch) {
 			kinds.push({ label: labelMatch[1].trim() });
 		}
 	}
+
 	return kinds;
 }
 
 function isWithinDirectory(parent: string, childRelative: string): boolean {
 	const resolvedParent = path.resolve(parent);
 	const resolvedChild = path.resolve(parent, childRelative);
+
 	return resolvedChild === resolvedParent || resolvedChild.startsWith(resolvedParent + path.sep);
 }
 
 export function findConfigPath(workspaceRoot: string): string | undefined {
 	for (const name of [".changie.yaml", ".changie.yml"]) {
 		const p = path.join(workspaceRoot, name);
+
 		if (fs.existsSync(p)) return p;
 	}
+
 	return undefined;
 }
 
 export function readConfig(workspaceRoot: string): ChangieConfig | undefined {
 	const configPath = findConfigPath(workspaceRoot);
+
 	if (!configPath) return undefined;
 
 	let content: string;
+
 	try {
 		content = fs.readFileSync(configPath, "utf-8");
 	} catch {
@@ -95,9 +107,11 @@ export function readUnreleasedEntries(
 	config: ChangieConfig,
 ): ChangeEntry[] {
 	const dir = path.join(workspaceRoot, config.changesDir, config.unreleasedDir);
+
 	if (!fs.existsSync(dir)) return [];
 
 	let files: string[];
+
 	try {
 		files = fs.readdirSync(dir).filter((f) => f.endsWith(".yaml") || f.endsWith(".yml"));
 	} catch {
@@ -105,11 +119,14 @@ export function readUnreleasedEntries(
 	}
 
 	const entries: ChangeEntry[] = [];
+
 	for (const file of files) {
 		const filePath = path.join(dir, file);
+
 		try {
 			const content = fs.readFileSync(filePath, "utf-8");
 			const data = parseSimpleYaml(content);
+
 			entries.push({
 				kind: data.kind ?? "Unknown",
 				body: data.body ?? "",
@@ -134,20 +151,26 @@ function parseReleaseFile(
 ): ReleaseInfo | undefined {
 	const lines = content.split("\n");
 	const headerMatch = lines[0]?.match(/^##\s+(.+?)\s+-\s+(\d{4}-\d{2}-\d{2})/);
+
 	if (!headerMatch) return undefined;
 
 	const version = headerMatch[1].trim();
 	const date = headerMatch[2];
 	const entries: ReleaseEntry[] = [];
+
 	let currentKind = "";
 
 	for (const line of lines.slice(1)) {
 		const kindMatch = line.match(/^###\s+(.+)/);
+
 		if (kindMatch) {
 			currentKind = kindMatch[1].trim();
+
 			continue;
 		}
+
 		const entryMatch = line.match(/^\*\s+(.+)/);
+
 		if (entryMatch && currentKind) {
 			entries.push({ kind: currentKind, body: entryMatch[1].trim() });
 		}
@@ -162,9 +185,11 @@ export function readReleases(
 	config: ChangieConfig,
 ): ReleaseInfo[] {
 	const changesDir = path.join(workspaceRoot, config.changesDir);
+
 	if (!fs.existsSync(changesDir)) return [];
 
 	let files: string[];
+
 	try {
 		files = fs.readdirSync(changesDir).filter((f) => /^\d/.test(f) && f.endsWith(".md"));
 	} catch {
@@ -172,11 +197,14 @@ export function readReleases(
 	}
 
 	const releases: ReleaseInfo[] = [];
+
 	for (const file of files) {
 		const filePath = path.join(changesDir, file);
+
 		try {
 			const content = fs.readFileSync(filePath, "utf-8");
 			const release = parseReleaseFile(content, filePath, workspaceRoot, workspaceName);
+
 			if (release) releases.push(release);
 		} catch {
 			// skip malformed files
@@ -192,6 +220,7 @@ export function findChangieBin(workspaceRoot: string, configuredPath?: string): 
 	if (configuredPath) return configuredPath;
 
 	const local = path.join(workspaceRoot, "node_modules", ".bin", "changie");
+
 	if (fs.existsSync(local)) return local;
 
 	return "changie";
@@ -204,7 +233,9 @@ export async function runChangie(
 ): Promise<string> {
 	const bin = findChangieBin(workspaceRoot, configuredPath);
 	const { stdout, stderr } = await execFileAsync(bin, args, { cwd: workspaceRoot });
+
 	if (stderr) throw new Error(stderr);
+
 	return stdout;
 }
 
@@ -229,10 +260,12 @@ export function updatePackageVersionFiles(
 	}
 
 	const pkgPath = path.join(workspaceRoot, "package.json");
+
 	if (!fs.existsSync(pkgPath)) return { bumped: false, noVersionField: false };
 
 	let pkgContent: string;
 	let pkg: Record<string, unknown>;
+
 	try {
 		pkgContent = fs.readFileSync(pkgPath, "utf-8");
 		pkg = JSON.parse(pkgContent) as Record<string, unknown>;
@@ -247,30 +280,37 @@ export function updatePackageVersionFiles(
 	// Use a function replacement to prevent special replacement patterns ($&, $', $`) from
 	// being interpreted when the version string contains those characters.
 	const updatedPkg = pkgContent.replace(/"version":\s*"[^"]*"/, () => `"version": "${semver}"`);
+
 	if (updatedPkg !== pkgContent) {
 		fs.writeFileSync(pkgPath, updatedPkg);
 	}
 
 	const lockPath = path.join(workspaceRoot, "package-lock.json");
+
 	if (fs.existsSync(lockPath)) {
 		try {
 			const lockContent = fs.readFileSync(lockPath, "utf-8");
 			const lock = JSON.parse(lockContent) as Record<string, unknown>;
+
 			let changed = false;
 
 			if (typeof lock.version === "string") {
 				lock.version = semver;
 				changed = true;
 			}
+
 			const packages = lock.packages as Record<string, Record<string, unknown>> | undefined;
+
 			if (packages?.[""] && typeof packages[""].version === "string") {
 				packages[""].version = semver;
+
 				changed = true;
 			}
 
 			if (changed) {
 				const indentMatch = lockContent.match(/^{\n(\s+)/);
 				const indent = indentMatch ? indentMatch[1] : "  ";
+
 				fs.writeFileSync(lockPath, JSON.stringify(lock, null, indent) + "\n");
 			}
 		} catch {

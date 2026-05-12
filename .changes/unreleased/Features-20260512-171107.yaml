@@ -1,0 +1,3 @@
+kind: Features
+body: 'Auto-commit support: automatically create a git commit when adding a changelog entry or batching a release, controlled by the new autoCommitOnNewEntry, autoCommitOnBatchRelease, commitMessageNewEntry, and commitMessageBatchRelease settings'
+time: 2026-05-12T17:11:07.312721-05:00

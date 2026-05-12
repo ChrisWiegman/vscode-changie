@@ -71,8 +71,4 @@ jobs:
           files: "*.vsix"
 
       - name: Publish to VS Code Marketplace
-        uses: HaaLeo/publish-vscode-extension@v2
-        with:
-          pat: ${{ secrets.VSCE_PAT }}
-          registryUrl: https://marketplace.visualstudio.com
-          extensionFile: "./${{ steps.vars.outputs.vsix_file }}"
+        run: node_modules/.bin/vsce publish --pat ${{ secrets.VSCE_PAT }} --packagePath "./${{ steps.vars.outputs.vsix_file }}"

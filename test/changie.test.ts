@@ -11,6 +11,7 @@ import {
 	parseSimpleYaml,
 	readConfig,
 	readUnreleasedEntries,
+	runGitCommit,
 	updatePackageVersionFiles,
 } from "../src/changie";
 
@@ -389,6 +390,50 @@ describe("updatePackageVersionFiles", () => {
 		assert.doesNotThrow(() => updatePackageVersionFiles(tmpDir, "1.2.3"));
 		const pkg = JSON.parse(fs.readFileSync(path.join(tmpDir, "package.json"), "utf-8")) as Record<string, unknown>;
 		assert.strictEqual(pkg.version, "1.2.3");
+	});
+});
+
+describe("runGitCommit", () => {
+	let tmpDir: string;
+
+	beforeEach(() => {
+		tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), "changie-test-"));
+	});
+
+	afterEach(() => {
+		fs.rmSync(tmpDir, { recursive: true, force: true });
+	});
+
+	function initGitRepo(dir: string): void {
+		const { execFileSync } = require("child_process") as typeof import("child_process");
+		execFileSync("git", ["init"], { cwd: dir });
+		execFileSync("git", ["config", "user.email", "test@test.com"], { cwd: dir });
+		execFileSync("git", ["config", "user.name", "Test"], { cwd: dir });
+	}
+
+	it("commits staged files with the given message", async () => {
+		initGitRepo(tmpDir);
+		const file = path.join(tmpDir, "entry.yaml");
+		fs.writeFileSync(file, "kind: Added\nbody: Test entry\n");
+
+		await runGitCommit(tmpDir, [file], "Updated changelog");
+
+		const { execFileSync } = require("child_process") as typeof import("child_process");
+		const log = execFileSync("git", ["log", "--oneline"], { cwd: tmpDir }).toString();
+		assert.ok(log.includes("Updated changelog"));
+	});
+
+	it("throws when not in a git repository", async () => {
+		const file = path.join(tmpDir, "entry.yaml");
+		fs.writeFileSync(file, "kind: Added\nbody: Test\n");
+
+		await assert.rejects(() => runGitCommit(tmpDir, [file], "Updated changelog"));
+	});
+
+	it("throws when there is nothing to commit", async () => {
+		initGitRepo(tmpDir);
+
+		await assert.rejects(() => runGitCommit(tmpDir, [path.join(tmpDir, "nonexistent.yaml")], "Updated changelog"));
 	});
 });
 

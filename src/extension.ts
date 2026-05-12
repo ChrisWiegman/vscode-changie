@@ -2,7 +2,7 @@ import * as fs from "fs";
 import * as path from "path";
 import * as vscode from "vscode";
 import { ChangelogProvider, EntryItem } from "./changelogProvider";
-import { findChangieBin, readConfig, readReleases, readUnreleasedEntries, runChangie, updatePackageVersionFiles } from "./changie";
+import { findChangieBin, readConfig, readReleases, readUnreleasedEntries, runChangie, runGitCommit, updatePackageVersionFiles } from "./changie";
 import { ReleasesProvider } from "./releasesProvider";
 import type { ChangieConfig, WorkspaceInfo } from "./types";
 
@@ -170,8 +170,36 @@ export async function activate(context: vscode.ExtensionContext): Promise<Extens
 
 				if (!body) return;
 
+				const unreleasedDir = path.join(ws.root, ws.config.changesDir, ws.config.unreleasedDir);
+				const beforeUnreleased = new Set(
+					fs.existsSync(unreleasedDir)
+						? fs.readdirSync(unreleasedDir).filter((f) => f.endsWith(".yaml") || f.endsWith(".yml"))
+						: [],
+				);
+
 				try {
 					await runChangie(ws.root, ["new", "--kind", kind, "--body", body.trim()], getConfiguredPath());
+
+					const cfg = vscode.workspace.getConfiguration("changie");
+
+					if (cfg.get<boolean>("autoCommitOnNewEntry", true)) {
+						const msg = cfg.get<string>("commitMessageNewEntry", "Updated changelog");
+						const newEntryFiles = (
+							fs.existsSync(unreleasedDir)
+								? fs.readdirSync(unreleasedDir).filter((f) => f.endsWith(".yaml") || f.endsWith(".yml"))
+								: []
+						)
+							.filter((f) => !beforeUnreleased.has(f))
+							.map((f) => path.join(unreleasedDir, f));
+
+						if (newEntryFiles.length > 0) {
+							try {
+								await runGitCommit(ws.root, newEntryFiles, msg);
+							} catch (gitErr) {
+								void vscode.window.showWarningMessage(`Changelog entry added but git commit failed: ${String(gitErr)}`);
+							}
+						}
+					}
 
 					refresh();
 
@@ -217,36 +245,83 @@ export async function activate(context: vscode.ExtensionContext): Promise<Extens
 
 			try {
 				const changesDir = path.join(ws.root, ws.config.changesDir);
-				const beforeFiles = fs.existsSync(changesDir)
-					? new Set(fs.readdirSync(changesDir).filter((f) => /^\d/.test(f) && f.endsWith(".md")))
-					: new Set<string>();
+				const batchUnreleasedDir = path.join(changesDir, ws.config.unreleasedDir);
+
+				const beforeVersionedFiles = new Set(
+					fs.existsSync(changesDir)
+						? fs.readdirSync(changesDir).filter((f) => /^\d/.test(f) && f.endsWith(".md"))
+						: [],
+				);
+				const beforeUnreleasedFiles = new Set(
+					fs.existsSync(batchUnreleasedDir)
+						? fs.readdirSync(batchUnreleasedDir).filter((f) => f.endsWith(".yaml") || f.endsWith(".yml"))
+						: [],
+				);
 
 				await runChangie(ws.root, ["batch", version], getConfiguredPath());
 
 				let resolvedVersion = version;
+				let newVersionFile: string | undefined;
 
 				if (fs.existsSync(changesDir)) {
-					const newFile = fs
+					const found = fs
 						.readdirSync(changesDir)
 						.filter((f) => /^\d/.test(f) && f.endsWith(".md"))
-						.find((f) => !beforeFiles.has(f));
+						.find((f) => !beforeVersionedFiles.has(f));
 
-					if (newFile) {
-						const content = fs.readFileSync(path.join(changesDir, newFile), "utf-8");
+					if (found) {
+						const content = fs.readFileSync(path.join(changesDir, found), "utf-8");
 						const match = content.split("\n")[0]?.match(/^##\s+(.+?)\s+-\s+\d{4}-\d{2}-\d{2}/);
 
 						if (match) resolvedVersion = match[1].trim();
+
+						newVersionFile = found;
 					}
 				}
 
+				const currentUnreleased = new Set(
+					fs.existsSync(batchUnreleasedDir)
+						? fs.readdirSync(batchUnreleasedDir).filter((f) => f.endsWith(".yaml") || f.endsWith(".yml"))
+						: [],
+				);
+				const deletedUnreleasedFiles = [...beforeUnreleasedFiles]
+					.filter((f) => !currentUnreleased.has(f))
+					.map((f) => path.join(batchUnreleasedDir, f));
+
 				await runChangie(ws.root, ["merge"], getConfiguredPath());
 
-				const shouldUpdate = vscode.workspace
-					.getConfiguration("changie")
-					.get<boolean>("updateVersionFiles", true);
+				const changieCfg = vscode.workspace.getConfiguration("changie");
+				const shouldUpdate = changieCfg.get<boolean>("updateVersionFiles", true);
 
 				if (shouldUpdate) {
 					bumpVersionFiles(ws.root, resolvedVersion);
+				}
+
+				if (changieCfg.get<boolean>("autoCommitOnBatchRelease", false)) {
+					const msgTemplate = changieCfg.get<string>("commitMessageBatchRelease", "Preparing release <version>");
+					const msg = msgTemplate.replace("<version>", resolvedVersion);
+					const filesToStage: string[] = [
+						path.join(ws.root, ws.config.changelogPath),
+						...deletedUnreleasedFiles,
+					];
+
+					if (newVersionFile) {
+						filesToStage.push(path.join(changesDir, newVersionFile));
+					}
+
+					if (shouldUpdate) {
+						filesToStage.push(path.join(ws.root, "package.json"));
+
+						if (fs.existsSync(path.join(ws.root, "package-lock.json"))) {
+							filesToStage.push(path.join(ws.root, "package-lock.json"));
+						}
+					}
+
+					try {
+						await runGitCommit(ws.root, filesToStage, msg);
+					} catch (gitErr) {
+						void vscode.window.showWarningMessage(`Release batched but git commit failed: ${String(gitErr)}`);
+					}
 				}
 
 				refresh();

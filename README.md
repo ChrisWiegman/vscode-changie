@@ -58,6 +58,10 @@ npm install --save-dev changie
 |---|---|---|
 | `changie.executablePath` | *(empty)* | Explicit path to the changie binary. Leave empty to use auto-detection. |
 | `changie.updateVersionFiles` | `true` | When enabled, **Batch for Release** automatically updates the `version` field in `package.json` (and `package-lock.json` if present) to match the new release version. A warning is shown if `package.json` exists but has no `version` field. Disable this if your project manages version bumps separately. |
+| `changie.autoCommitOnNewEntry` | `true` | When enabled, automatically creates a git commit after adding a new changelog entry. Stages all files in the unreleased changes directory. |
+| `changie.autoCommitOnBatchRelease` | `false` | When enabled, automatically creates a git commit after batching and merging a release. Stages the changes directory, `CHANGELOG.md`, and (if `updateVersionFiles` is enabled) `package.json` and `package-lock.json`. |
+| `changie.commitMessageNewEntry` | `"Updated changelog"` | Commit message used when auto-committing a new changelog entry. |
+| `changie.commitMessageBatchRelease` | `"Preparing release <version>"` | Commit message used when auto-committing a batched release. Use `<version>` as a placeholder for the resolved version string (e.g. `"chore: release <version>"`). |
 
 ## Getting started
 

@@ -239,6 +239,15 @@ export async function runChangie(
 	return stdout;
 }
 
+export async function runGitCommit(
+	workspaceRoot: string,
+	filePaths: string[],
+	message: string,
+): Promise<void> {
+	await execFileAsync("git", ["add", "--", ...filePaths], { cwd: workspaceRoot });
+	await execFileAsync("git", ["commit", "-m", message], { cwd: workspaceRoot });
+}
+
 export function normalizeVersion(v: string): string {
 	return v.replace(/^v/, "");
 }

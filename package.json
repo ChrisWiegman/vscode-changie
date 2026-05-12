@@ -143,6 +143,26 @@
 					"type": "boolean",
 					"default": true,
 					"description": "When enabled, automatically updates the version field in package.json (and package-lock.json if present) to match the new release version when batching a release."
+				},
+				"changie.autoCommitOnNewEntry": {
+					"type": "boolean",
+					"default": true,
+					"description": "When enabled, automatically creates a git commit after adding a new changelog entry."
+				},
+				"changie.autoCommitOnBatchRelease": {
+					"type": "boolean",
+					"default": false,
+					"description": "When enabled, automatically creates a git commit after batching and merging a release."
+				},
+				"changie.commitMessageNewEntry": {
+					"type": "string",
+					"default": "Updated changelog",
+					"description": "Commit message used when auto-committing a new changelog entry."
+				},
+				"changie.commitMessageBatchRelease": {
+					"type": "string",
+					"default": "Preparing release <version>",
+					"description": "Commit message used when auto-committing a batched release. Use <version> as a placeholder for the resolved version string."
 				}
 			}
 		}

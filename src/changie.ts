@@ -1,5 +1,6 @@
 import { execFile } from "child_process";
 import * as fs from "fs";
+import * as os from "os";
 import * as path from "path";
 import { promisify } from "util";
 import type { ChangeEntry, ChangieConfig, ReleaseEntry, ReleaseInfo } from "./types";
@@ -223,6 +224,19 @@ export function findChangieBin(workspaceRoot: string, configuredPath?: string): 
 
 	if (fs.existsSync(local)) return local;
 
+	// VS Code on macOS/Linux may not inherit the user's shell PATH, so check
+	// common install locations for changie (a Go binary).
+	const commonPaths = [
+		path.join(os.homedir(), "go", "bin", "changie"),
+		"/opt/homebrew/bin/changie",
+		"/usr/local/bin/changie",
+		path.join(os.homedir(), ".local", "bin", "changie"),
+	];
+
+	for (const p of commonPaths) {
+		if (fs.existsSync(p)) return p;
+	}
+
 	return "changie";
 }
 
@@ -232,7 +246,17 @@ export async function runChangie(
 	configuredPath?: string,
 ): Promise<string> {
 	const bin = findChangieBin(workspaceRoot, configuredPath);
-	const { stdout, stderr } = await execFileAsync(bin, args, { cwd: workspaceRoot });
+	const extraPaths = [
+		path.join(os.homedir(), "go", "bin"),
+		"/opt/homebrew/bin",
+		"/usr/local/bin",
+		path.join(os.homedir(), ".local", "bin"),
+	];
+	const env = {
+		...process.env,
+		PATH: [...extraPaths, process.env.PATH ?? ""].join(path.delimiter),
+	};
+	const { stdout, stderr } = await execFileAsync(bin, args, { cwd: workspaceRoot, env });
 
 	if (stderr) throw new Error(stderr);
 

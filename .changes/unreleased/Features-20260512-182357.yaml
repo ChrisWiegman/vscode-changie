@@ -1,3 +1,0 @@
-kind: Features
-body: Show a better error message if changie isn't available and offer to install locally if it's in package.json.
-time: 2026-05-12T18:23:57.939599-05:00

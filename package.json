@@ -2,7 +2,7 @@
 	"name": "cw-changie",
 	"displayName": "Changie Changelog Editor",
 	"description": "Manage changelog entries with changie directly from VS Code.",
-	"version": "0.3.0",
+	"version": "0.3.1",
 	"publisher": "ChrisWiegman",
 	"license": "MIT",
 	"repository": {

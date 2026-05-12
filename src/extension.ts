@@ -2,7 +2,7 @@ import * as fs from "fs";
 import * as path from "path";
 import * as vscode from "vscode";
 import { ChangelogProvider, EntryItem } from "./changelogProvider";
-import { findChangieBin, readConfig, readReleases, readUnreleasedEntries, runChangie, runGitCommit, updatePackageVersionFiles } from "./changie";
+import { findChangieBin, isChangieInPackageJson, readConfig, readReleases, readUnreleasedEntries, runChangie, runGitCommit, updatePackageVersionFiles } from "./changie";
 import { ReleasesProvider } from "./releasesProvider";
 import type { ChangieConfig, WorkspaceInfo } from "./types";
 
@@ -18,6 +18,30 @@ const VERSION_OPTIONS = [
 	{ label: "patch", description: "Increment patch version (bug fixes)" },
 	{ label: "$(edit) Custom...", description: "Enter a specific version number" },
 ];
+
+function isEnoentError(err: unknown): boolean {
+	return err instanceof Error && (err as NodeJS.ErrnoException).code === "ENOENT";
+}
+
+async function handleChangieNotFound(workspaceRoot: string): Promise<void> {
+	if (isChangieInPackageJson(workspaceRoot)) {
+		const choice = await vscode.window.showErrorMessage(
+			"Changie CLI not found. It is listed in package.json but may not be installed — try running npm ci.",
+			"Run npm ci",
+		);
+
+		if (choice === "Run npm ci") {
+			const terminal = vscode.window.createTerminal({ name: "Changie: npm ci", cwd: workspaceRoot });
+
+			terminal.show();
+			terminal.sendText("npm ci");
+		}
+	} else {
+		void vscode.window.showErrorMessage(
+			"Changie CLI not found. Please install changie — see https://changie.dev for instructions.",
+		);
+	}
+}
 
 function bumpVersionFiles(workspaceRoot: string, version: string): void {
 	const result = updatePackageVersionFiles(workspaceRoot, version);
@@ -205,7 +229,11 @@ export async function activate(context: vscode.ExtensionContext): Promise<Extens
 
 					void vscode.window.showInformationMessage(`Changelog entry added: [${kind}] ${body.trim()}`);
 				} catch (err) {
-					void vscode.window.showErrorMessage(`changie new failed: ${String(err)}`);
+					if (isEnoentError(err)) {
+						await handleChangieNotFound(ws.root);
+					} else {
+						void vscode.window.showErrorMessage(`changie new failed: ${String(err)}`);
+					}
 				}
 			},
 		),
@@ -336,7 +364,11 @@ export async function activate(context: vscode.ExtensionContext): Promise<Extens
 					`Batched and merged ${resolvedVersion} into ${ws.config.changelogPath}.`,
 				);
 			} catch (err) {
-				void vscode.window.showErrorMessage(`changie batch/merge failed: ${String(err)}`);
+				if (isEnoentError(err)) {
+					await handleChangieNotFound(ws.root);
+				} else {
+					void vscode.window.showErrorMessage(`changie batch/merge failed: ${String(err)}`);
+				}
 			}
 		}),
 	);
@@ -368,7 +400,11 @@ export async function activate(context: vscode.ExtensionContext): Promise<Extens
 
 				void vscode.window.showInformationMessage("Changelog merged successfully.");
 			} catch (err) {
-				void vscode.window.showErrorMessage(`changie merge failed: ${String(err)}`);
+				if (isEnoentError(err)) {
+					await handleChangieNotFound(ws.root);
+				} else {
+					void vscode.window.showErrorMessage(`changie merge failed: ${String(err)}`);
+				}
 			}
 		}),
 	);

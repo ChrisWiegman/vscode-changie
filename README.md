@@ -44,13 +44,16 @@ The `changie` CLI must be available. The extension looks for it in this order:
 
 1. The path configured in `changie.executablePath`
 2. `node_modules/.bin/changie` in the workspace root
-3. `changie` on `$PATH`
+3. Common system locations (`~/go/bin`, `/opt/homebrew/bin`, `/usr/local/bin`, `~/.local/bin`)
+4. `changie` on `$PATH`
 
 Install changie via the [official instructions](https://changie.dev/guide/installation/) or as an npm dev dependency:
 
 ```bash
 npm install --save-dev changie
 ```
+
+If changie is not found when running a command, the extension shows a clear error message. When changie is listed in `package.json` but not yet installed (e.g. after a fresh clone), the error includes a **Run npm ci** button to install dependencies without leaving VS Code.
 
 ## Configuration
 

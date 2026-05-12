@@ -6,6 +6,7 @@ import { afterEach, beforeEach, describe, it } from "mocha";
 import {
 	findChangieBin,
 	findConfigPath,
+	isChangieInPackageJson,
 	normalizeVersion,
 	parseKindsFromConfig,
 	parseSimpleYaml,
@@ -434,6 +435,51 @@ describe("runGitCommit", () => {
 		initGitRepo(tmpDir);
 
 		await assert.rejects(() => runGitCommit(tmpDir, [path.join(tmpDir, "nonexistent.yaml")], "Updated changelog"));
+	});
+});
+
+describe("isChangieInPackageJson", () => {
+	let tmpDir: string;
+
+	beforeEach(() => {
+		tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), "changie-test-"));
+	});
+
+	afterEach(() => {
+		fs.rmSync(tmpDir, { recursive: true, force: true });
+	});
+
+	it("returns false when no package.json exists", () => {
+		assert.strictEqual(isChangieInPackageJson(tmpDir), false);
+	});
+
+	it("returns true when changie is in dependencies", () => {
+		fs.writeFileSync(
+			path.join(tmpDir, "package.json"),
+			JSON.stringify({ dependencies: { changie: "^1.0.0" } }),
+		);
+		assert.strictEqual(isChangieInPackageJson(tmpDir), true);
+	});
+
+	it("returns true when changie is in devDependencies", () => {
+		fs.writeFileSync(
+			path.join(tmpDir, "package.json"),
+			JSON.stringify({ devDependencies: { changie: "^1.0.0" } }),
+		);
+		assert.strictEqual(isChangieInPackageJson(tmpDir), true);
+	});
+
+	it("returns false when changie is not listed in package.json", () => {
+		fs.writeFileSync(
+			path.join(tmpDir, "package.json"),
+			JSON.stringify({ dependencies: { lodash: "^4.0.0" }, devDependencies: { mocha: "^10.0.0" } }),
+		);
+		assert.strictEqual(isChangieInPackageJson(tmpDir), false);
+	});
+
+	it("returns false when package.json is malformed", () => {
+		fs.writeFileSync(path.join(tmpDir, "package.json"), "not valid json");
+		assert.strictEqual(isChangieInPackageJson(tmpDir), false);
 	});
 });
 

@@ -272,6 +272,24 @@ export async function runGitCommit(
 	await execFileAsync("git", ["commit", "-m", message], { cwd: workspaceRoot });
 }
 
+export function isChangieInPackageJson(workspaceRoot: string): boolean {
+	const pkgPath = path.join(workspaceRoot, "package.json");
+
+	if (!fs.existsSync(pkgPath)) return false;
+
+	try {
+		const pkg = JSON.parse(fs.readFileSync(pkgPath, "utf-8")) as Record<string, unknown>;
+		const deps = {
+			...((pkg.dependencies as Record<string, string> | undefined) ?? {}),
+			...((pkg.devDependencies as Record<string, string> | undefined) ?? {}),
+		};
+
+		return "changie" in deps;
+	} catch {
+		return false;
+	}
+}
+
 export function normalizeVersion(v: string): string {
 	return v.replace(/^v/, "");
 }

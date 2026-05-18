@@ -118,6 +118,7 @@ export class ChangelogProvider implements vscode.TreeDataProvider<TreeNode> {
 
 	getEntryFilePath(label: string): string | undefined {
 		const all = this.workspaces.flatMap((ws) => ws.entries);
+
 		return all.find((e) => e.body === label || path.basename(e.filePath) === label)?.filePath;
 	}
 

@@ -500,7 +500,7 @@ const watchers: vscode.FileSystemWatcher[] = [];
 function setupFileWatchers(
 	context: vscode.ExtensionContext,
 
-	refresh: () => void,
+	refresh: ()=> void,
 ): void {
 	for (const w of watchers) w.dispose();
 

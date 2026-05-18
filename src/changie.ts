@@ -306,7 +306,7 @@ export function updatePackageVersionFiles(
 	const semver = normalizeVersion(version);
 
 	// Reject versions that would break JSON structure or contain control characters
-	if (!/^\d/.test(semver) || semver.includes('"') || semver.includes('\n') || semver.includes('\r')) {
+	if (!/^\d/.test(semver) || semver.includes("\"") || semver.includes("\n") || semver.includes("\r")) {
 		return { bumped: false, noVersionField: false };
 	}
 

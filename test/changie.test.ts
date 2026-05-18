@@ -29,7 +29,7 @@ describe("parseSimpleYaml", () => {
 	});
 
 	it("strips surrounding double quotes", () => {
-		const result = parseSimpleYaml('body: "Fixed the bug"');
+		const result = parseSimpleYaml("body: \"Fixed the bug\"");
 		assert.strictEqual(result.body, "Fixed the bug");
 	});
 
@@ -281,7 +281,7 @@ describe("updatePackageVersionFiles", () => {
 	});
 
 	it("returns noVersionField: true when package.json has no version field", () => {
-		fs.writeFileSync(path.join(tmpDir, "package.json"), '{"name": "test"}\n');
+		fs.writeFileSync(path.join(tmpDir, "package.json"), "{\"name\": \"test\"}\n");
 		const result = updatePackageVersionFiles(tmpDir, "1.2.3");
 		assert.deepStrictEqual(result, { bumped: false, noVersionField: true });
 	});
@@ -289,7 +289,7 @@ describe("updatePackageVersionFiles", () => {
 	it("updates the version in package.json and returns bumped: true", () => {
 		fs.writeFileSync(
 			path.join(tmpDir, "package.json"),
-			'{\n  "name": "test",\n  "version": "1.0.0"\n}\n',
+			"{\n  \"name\": \"test\",\n  \"version\": \"1.0.0\"\n}\n",
 		);
 		const result = updatePackageVersionFiles(tmpDir, "1.2.3");
 		assert.deepStrictEqual(result, { bumped: true, noVersionField: false });
@@ -300,7 +300,7 @@ describe("updatePackageVersionFiles", () => {
 	it("strips a leading v before writing to package.json", () => {
 		fs.writeFileSync(
 			path.join(tmpDir, "package.json"),
-			'{\n  "name": "test",\n  "version": "1.0.0"\n}\n',
+			"{\n  \"name\": \"test\",\n  \"version\": \"1.0.0\"\n}\n",
 		);
 		updatePackageVersionFiles(tmpDir, "v2.0.0");
 		const updated = JSON.parse(fs.readFileSync(path.join(tmpDir, "package.json"), "utf-8")) as Record<string, unknown>;
@@ -309,23 +309,23 @@ describe("updatePackageVersionFiles", () => {
 
 	it("preserves surrounding content in package.json", () => {
 		const original =
-			'{\n  "name": "test",\n  "version": "1.0.0",\n  "description": "A test"\n}\n';
+			"{\n  \"name\": \"test\",\n  \"version\": \"1.0.0\",\n  \"description\": \"A test\"\n}\n";
 		fs.writeFileSync(path.join(tmpDir, "package.json"), original);
 		updatePackageVersionFiles(tmpDir, "1.2.3");
 		const content = fs.readFileSync(path.join(tmpDir, "package.json"), "utf-8");
-		assert.ok(content.includes('"name": "test"'));
-		assert.ok(content.includes('"description": "A test"'));
-		assert.ok(content.includes('"version": "1.2.3"'));
+		assert.ok(content.includes("\"name\": \"test\""));
+		assert.ok(content.includes("\"description\": \"A test\""));
+		assert.ok(content.includes("\"version\": \"1.2.3\""));
 	});
 
 	it("skips package-lock.json when it does not exist", () => {
-		fs.writeFileSync(path.join(tmpDir, "package.json"), '{\n  "version": "1.0.0"\n}\n');
+		fs.writeFileSync(path.join(tmpDir, "package.json"), "{\n  \"version\": \"1.0.0\"\n}\n");
 		updatePackageVersionFiles(tmpDir, "1.2.3");
 		assert.ok(!fs.existsSync(path.join(tmpDir, "package-lock.json")));
 	});
 
 	it("updates root version and packages[''] version in package-lock.json", () => {
-		fs.writeFileSync(path.join(tmpDir, "package.json"), '{\n  "version": "1.0.0"\n}\n');
+		fs.writeFileSync(path.join(tmpDir, "package.json"), "{\n  \"version\": \"1.0.0\"\n}\n");
 		const lock = {
 			name: "test",
 			version: "1.0.0",
@@ -345,7 +345,7 @@ describe("updatePackageVersionFiles", () => {
 	});
 
 	it("updates root version in package-lock.json when no packages[''] entry", () => {
-		fs.writeFileSync(path.join(tmpDir, "package.json"), '{\n  "version": "1.0.0"\n}\n');
+		fs.writeFileSync(path.join(tmpDir, "package.json"), "{\n  \"version\": \"1.0.0\"\n}\n");
 		const lock = { name: "test", version: "1.0.0", lockfileVersion: 1 };
 		fs.writeFileSync(
 			path.join(tmpDir, "package-lock.json"),
@@ -359,15 +359,15 @@ describe("updatePackageVersionFiles", () => {
 	});
 
 	it("returns bumped: false for a version string containing double quotes", () => {
-		fs.writeFileSync(path.join(tmpDir, "package.json"), '{\n  "version": "1.0.0"\n}\n');
-		const result = updatePackageVersionFiles(tmpDir, '1.0.0", "scripts":{"postinstall":"evil"}//');
+		fs.writeFileSync(path.join(tmpDir, "package.json"), "{\n  \"version\": \"1.0.0\"\n}\n");
+		const result = updatePackageVersionFiles(tmpDir, "1.0.0\", \"scripts\":{\"postinstall\":\"evil\"}//");
 		assert.deepStrictEqual(result, { bumped: false, noVersionField: false });
 		const pkg = JSON.parse(fs.readFileSync(path.join(tmpDir, "package.json"), "utf-8")) as Record<string, unknown>;
 		assert.strictEqual(pkg.version, "1.0.0");
 	});
 
 	it("returns bumped: false for a version string not starting with a digit", () => {
-		fs.writeFileSync(path.join(tmpDir, "package.json"), '{\n  "version": "1.0.0"\n}\n');
+		fs.writeFileSync(path.join(tmpDir, "package.json"), "{\n  \"version\": \"1.0.0\"\n}\n");
 		const result = updatePackageVersionFiles(tmpDir, "invalid-version");
 		assert.deepStrictEqual(result, { bumped: false, noVersionField: false });
 	});
@@ -375,7 +375,7 @@ describe("updatePackageVersionFiles", () => {
 	it("does not corrupt package.json when version contains $& replacement pattern", () => {
 		fs.writeFileSync(
 			path.join(tmpDir, "package.json"),
-			'{\n  "name": "test",\n  "version": "1.0.0"\n}\n',
+			"{\n  \"name\": \"test\",\n  \"version\": \"1.0.0\"\n}\n",
 		);
 		// $& would expand to the matched text if not using a function replacement
 		const result = updatePackageVersionFiles(tmpDir, "2.$&0");
@@ -386,7 +386,7 @@ describe("updatePackageVersionFiles", () => {
 	});
 
 	it("handles malformed package-lock.json without throwing", () => {
-		fs.writeFileSync(path.join(tmpDir, "package.json"), '{\n  "version": "1.0.0"\n}\n');
+		fs.writeFileSync(path.join(tmpDir, "package.json"), "{\n  \"version\": \"1.0.0\"\n}\n");
 		fs.writeFileSync(path.join(tmpDir, "package-lock.json"), "not valid json");
 		assert.doesNotThrow(() => updatePackageVersionFiles(tmpDir, "1.2.3"));
 		const pkg = JSON.parse(fs.readFileSync(path.join(tmpDir, "package.json"), "utf-8")) as Record<string, unknown>;
